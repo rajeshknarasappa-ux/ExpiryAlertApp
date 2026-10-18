@@ -1,0 +1,8 @@
+{
+  "name": "ExpiryAlert - Smart Expiration Tracker",
+  "description": "AI-powered household inventory and expiration tracker with label photo OCR, smart urgency scoring, and automated expiry alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

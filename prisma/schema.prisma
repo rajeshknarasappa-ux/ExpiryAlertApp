@@ -1,0 +1,118 @@
+// Prisma schema for ExpiryAlert
+// Defines models for User, Item, and NotificationLog with relations, enums, and indexes.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ItemCategory {
+  GROCERIES
+  MEDICINE
+  COSMETICS
+  PANTRY
+  HOUSEHOLD
+  OTHER
+}
+
+enum ItemStatus {
+  FRESH
+  EXPIRING_SOON
+  EXPIRED
+  CONSUMED
+  DISCARDED
+}
+
+enum AlertType {
+  EXPIRING_IN_7_DAYS
+  EXPIRING_IN_3_DAYS
+  EXPIRING_IN_1_DAY
+  EXPIRED_TODAY
+  OVERDUE
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  name              String?
+  avatarUrl         String?
+  notificationEmail String?
+  emailAlerts       Boolean           @default(true)
+  pushAlerts        Boolean           @default(true)
+  alertDaysAdvance  Int               @default(3) // Alert N days before expiry
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  items             Item[]
+  notificationLogs  NotificationLog[]
+
+  @@map("users")
+}
+
+model Item {
+  id              String            @id @default(uuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name            String
+  brand           String?
+  category        ItemCategory      @default(GROCERIES)
+  subCategory     String?
+  
+  purchaseDate    DateTime          @default(now())
+  expiryDate      DateTime
+  openedDate      DateTime?
+  
+  quantity        Float             @default(1)
+  unit            String            @default("unit") // e.g. "unit", "bottle", "carton", "box", "g", "ml"
+  location        String            @default("Fridge") // "Fridge", "Pantry", "Freezer", "Medicine Cabinet", "Bathroom"
+  
+  status          ItemStatus        @default(FRESH)
+  isConsumed      Boolean           @default(false)
+  consumedAt      DateTime?
+  
+  notes           String?
+  storageTips     String?
+  imageURL        String?
+  rawOcrText      String?
+  aiConfidence    String?           // "high", "medium", "low"
+  priorityScore   Int               @default(50) // Computed dynamic priority (0-100)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  notificationLogs NotificationLog[]
+
+  @@index([userId, status])
+  @@index([expiryDate])
+  @@index([category])
+  @@map("items")
+}
+
+model NotificationLog {
+  id              String       @id @default(uuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  itemId          String
+  item            Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemName        String
+  
+  alertType       AlertType
+  daysRemaining   Int          // Negative if already expired
+  recipientEmail  String
+  channel         String       @default("EMAIL_AND_IN_APP") // "EMAIL", "PUSH", "IN_APP"
+  
+  isRead          Boolean      @default(false)
+  sentSuccessfully Boolean     @default(true)
+  message         String
+  triggeredAt     DateTime     @default(now())
+
+  @@index([userId, isRead])
+  @@index([triggeredAt])
+  @@map("notification_logs")
+}
